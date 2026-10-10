@@ -1,11 +1,11 @@
 ## Movie Diary Reader with OMDB Integration
 
-This Go application scrapes your public Letterboxd diary and enriches it with additional movie information from the OMDB API. It refreshes once a day and uses the included CSV exports if Letterboxd is unavailable at startup.
+This Go application reads your public Letterboxd diary from its RSS feed and enriches it with additional movie information from the OMDB API. It refreshes once a day and keeps its history in `diary.csv` and `reviews.csv` in the working directory, which it also loads at startup.
 
 ### Features
 
-- **Live Diary**: Refreshes the latest diary and review pages once a day
-- **CSV Fallback**: Merges new diary entries into saved history and retains older reviews if Letterboxd blocks historical pages
+- **Live Diary**: Refreshes the latest 50 diary entries, with reviews and posters, from your Letterboxd RSS feed once a day
+- **CSV Fallback**: Merges new diary entries into saved history, which keeps everything older than the feed. Letterboxd blocks its paginated diary and review pages with a Cloudflare challenge, so older history comes from a Letterboxd data export (Settings → Import & Export)
 - **OMDB Integration**: Fetches movie posters, directors, actors, plot summaries, and IMDB ratings
 - **Error Handling**: Gracefully handles missing movies or API failures
 - **Flexible Usage**: Works with or without OMDB API key
@@ -33,6 +33,10 @@ Each movie contains:
 
 ### Usage
 
+#### Data files
+
+The CSVs aren't in this repository. To start with your full history, export your data from Letterboxd (Settings → Import & Export) and put its `diary.csv` and `reviews.csv` in the directory you run boxy from. Boxy updates them on each refresh and caches OMDB lookups in `omdb_cache.csv` alongside them.
+
 #### Basic Usage
 ```bash
 go run main.go
@@ -40,7 +44,7 @@ go run main.go
 
 By default the app uses the `dongdominator` Letterboxd account. Set `LETTERBOXD_USERNAME` to use another public account.
 
-Letterboxd requests are made directly by default. If a request receives HTTP 403 and `LETTERBOXD_PROXY_URL` is set to an HTTP or HTTPS proxy, that request is retried once through the proxy. Other requests remain direct.
+The feed is fetched directly by default. If the request receives HTTP 403 and `LETTERBOXD_PROXY_URL` is set to an HTTP or HTTPS proxy, that request is retried once through the proxy. Other requests remain direct.
 
 ```bash
 export LETTERBOXD_PROXY_URL="http://proxy-host:port"
@@ -50,7 +54,7 @@ export LETTERBOXD_PROXY_URL="http://proxy-host:port"
 1. Get a free API key from [OMDB API](http://www.omdbapi.com/)
 2. Set the environment variable:
 ```bash
-export OMDB_API_KEY="your_api_key_here"
+export MOVIE_API_KEY="your_api_key_here"
 go run main.go
 ```
 

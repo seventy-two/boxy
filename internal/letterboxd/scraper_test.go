@@ -8,68 +8,138 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-
-	"golang.org/x/net/html"
-
-	"github.com/seventy-two/boxy/internal/reader"
 )
 
-func TestParseReviewsPage(t *testing.T) {
-	markup := `<html><body>
-		<div class="listitem js-listitem" data-object-id="viewing:12345">
-			<div class="react-component figure" data-component-class="LazyPoster" data-item-slug="example-film" data-resolvable-poster-path='{&#034;posteredBaseLink&#034;:&#034;/film/example-film/&#034;,&#034;cacheBustingKey&#034;:&#034;ab12cd&#034;}'>
-				<img src="https://s.ltrbxd.com/static/img/empty-poster-70.png" alt="Example Film" />
-			</div>
-			<div class="inline-production-masthead">
-				<h2 class="primaryname prettify"><a href="/dongdominator/film/example-film/">Example Film</a></h2>
-				<span class="releasedate">2001</span>
-			</div>
-			<svg class="glyph -rating" aria-label="★★★½"></svg>
-			<a href="/dongdominator/film/example-film/">Watched</a>
-			<time class="timestamp" datetime="2026-05-10">10 May 2026</time>
-			<div class="body-text js-review-body"><p>First paragraph.</p><p>Second paragraph.</p></div>
-		</div>
-		<a class="next" href="/dongdominator/reviews/films/page/2/">Next</a>
-	</body></html>`
-	document, err := html.Parse(strings.NewReader(markup))
+const testFeed = `<?xml version='1.0' encoding='utf-8'?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:letterboxd="https://letterboxd.com" xmlns:tmdb="https://themoviedb.org">
+	<channel>
+		<title>Letterboxd - Megz</title>
+		<item>
+			<title>Click, 2006 - ★★★½</title>
+			<link>https://letterboxd.com/dongdominator/film/click/</link>
+			<guid isPermaLink="false">letterboxd-review-1</guid>
+			<letterboxd:watchedDate>2026-10-05</letterboxd:watchedDate>
+			<letterboxd:rewatch>No</letterboxd:rewatch>
+			<letterboxd:filmTitle>Click</letterboxd:filmTitle>
+			<letterboxd:filmYear>2006</letterboxd:filmYear>
+			<letterboxd:memberRating>3.5</letterboxd:memberRating>
+			<description><![CDATA[ <p><img src="https://a.ltrbxd.com/resized/film-poster/click-0-600-0-900-crop.jpg?v=1"/></p> <p>They should make a sequel where it still goes wrong. I&#039;d watch that</p> <p>Second paragraph<br/>with a line break.</p> ]]></description>
+		</item>
+		<item>
+			<title>The Fast and the Furious, 2001 - ★★★★★</title>
+			<link>https://letterboxd.com/dongdominator/film/the-fast-and-the-furious-2001/1/</link>
+			<guid isPermaLink="false">letterboxd-watch-2</guid>
+			<letterboxd:watchedDate>2026-10-07</letterboxd:watchedDate>
+			<letterboxd:rewatch>Yes</letterboxd:rewatch>
+			<letterboxd:filmTitle>The Fast and the Furious</letterboxd:filmTitle>
+			<letterboxd:filmYear>2001</letterboxd:filmYear>
+			<letterboxd:memberRating>5.0</letterboxd:memberRating>
+			<description><![CDATA[ <p><img src="https://a.ltrbxd.com/resized/film-poster/fast-0-600-0-900-crop.jpg?v=2"/></p> <p>Watched on Wednesday October 7, 2026.</p> ]]></description>
+		</item>
+		<item>
+			<title>Heat, 1995</title>
+			<link>https://letterboxd.com/dongdominator/film/heat-1995/</link>
+			<guid isPermaLink="false">letterboxd-review-3</guid>
+			<letterboxd:watchedDate>2026-09-01</letterboxd:watchedDate>
+			<letterboxd:rewatch>No</letterboxd:rewatch>
+			<letterboxd:filmTitle>Heat</letterboxd:filmTitle>
+			<letterboxd:filmYear>1995</letterboxd:filmYear>
+			<description><![CDATA[ <p><img src="https://a.ltrbxd.com/resized/film-poster/heat.jpg"/></p> <p><em>This review may contain spoilers.</em></p> <p>The bank job.</p> ]]></description>
+		</item>
+		<item>
+			<title>Favourite heist films</title>
+			<link>https://letterboxd.com/dongdominator/list/favourite-heist-films/</link>
+			<guid isPermaLink="false">letterboxd-list-4</guid>
+			<description><![CDATA[ <p>A list.</p> ]]></description>
+		</item>
+	</channel>
+</rss>`
+
+func TestFetchLatestEntriesReadsFeed(t *testing.T) {
+	requests := make(map[string]int)
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests[request.URL.Path]++
+		if request.URL.Path != "/dongdominator/rss/" {
+			http.NotFound(response, request)
+			return
+		}
+		_, _ = io.WriteString(response, testFeed)
+	}))
+	defer server.Close()
+	feedURL, _ := url.Parse(server.URL + "/dongdominator/rss/")
+	scraper := &Scraper{feedURL: feedURL, client: server.Client()}
+
+	movies, err := scraper.FetchLatestEntries(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	pageURL, _ := url.Parse("https://letterboxd.com/dongdominator/reviews/")
+	if len(requests) != 1 {
+		t.Fatalf("made requests other than the feed: %v", requests)
+	}
+	if len(movies) != 3 {
+		t.Fatalf("got %d entries, want 3 (lists skipped): %+v", len(movies), movies)
+	}
 
-	movies, nextURL := parseReviewsPage(document, pageURL)
-	if len(movies) != 1 {
-		t.Fatalf("got %d reviews, want 1", len(movies))
+	click := movies[0]
+	if click.Name != "Click" || click.Year != 2006 || click.Rating != 3.5 || click.Rewatch {
+		t.Errorf("unexpected metadata: %+v", click)
 	}
-	listing := movies[0]
-	movie := listing.movie
-	if listing.viewingID != "12345" {
-		t.Errorf("unexpected viewing ID: %q", listing.viewingID)
+	if click.WatchedDate.Format("2006-01-02") != "2026-10-05" || !click.Date.Equal(click.WatchedDate) {
+		t.Errorf("unexpected dates: %s / %s", click.Date, click.WatchedDate)
 	}
-	if movie.Name != "Example Film" || movie.Year != 2001 || movie.Rating != 3.5 {
-		t.Fatalf("unexpected movie metadata: %+v", movie)
+	if click.LetterboxdURI != "https://letterboxd.com/dongdominator/film/click/" {
+		t.Errorf("unexpected URI: %q", click.LetterboxdURI)
 	}
-	if listing.posterMetadataURL != "https://letterboxd.com/film/example-film/poster/std/150/?k=ab12cd" {
-		t.Errorf("unexpected Letterboxd poster metadata URL: %q", listing.posterMetadataURL)
+	if click.Poster != "https://a.ltrbxd.com/resized/film-poster/click-0-150-0-225-crop.jpg?v=1" {
+		t.Errorf("unexpected poster: %q", click.Poster)
 	}
-	if movie.Review != "First paragraph.\nSecond paragraph." {
-		t.Errorf("unexpected review text: %q", movie.Review)
+	if want := "They should make a sequel where it still goes wrong. I'd watch that\nSecond paragraph\nwith a line break."; click.Review != want {
+		t.Errorf("review = %q, want %q", click.Review, want)
 	}
-	if movie.WatchedDate.Format("2006-01-02") != "2026-05-10" {
-		t.Errorf("unexpected watched date: %s", movie.WatchedDate)
+
+	fast := movies[1]
+	if !fast.Rewatch || fast.Rating != 5 || fast.Review != "" {
+		t.Errorf("unexpected rewatch entry: %+v", fast)
 	}
-	if movie.LetterboxdURI != "https://letterboxd.com/dongdominator/film/example-film/" {
-		t.Errorf("unexpected Letterboxd URI: %q", movie.LetterboxdURI)
-	}
-	if nextURL == nil || nextURL.Path != "/dongdominator/reviews/films/page/2/" {
-		t.Errorf("unexpected next page: %v", nextURL)
+
+	heat := movies[2]
+	if heat.Rating != 0 || heat.Review != "The bank job." {
+		t.Errorf("unexpected unrated spoiler entry: rating=%v review=%q", heat.Rating, heat.Review)
 	}
 }
 
-type roundTripperFunc func(*http.Request) (*http.Response, error)
+func TestFetchLatestEntriesErrors(t *testing.T) {
+	for name, handler := range map[string]http.HandlerFunc{
+		"blocked": func(response http.ResponseWriter, _ *http.Request) {
+			http.Error(response, "challenge", http.StatusForbidden)
+		},
+		"no entries": func(response http.ResponseWriter, _ *http.Request) {
+			_, _ = io.WriteString(response, `<rss><channel></channel></rss>`)
+		},
+		"not xml": func(response http.ResponseWriter, _ *http.Request) {
+			_, _ = io.WriteString(response, `<html><body>Just a moment...`)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(handler)
+			defer server.Close()
+			feedURL, _ := url.Parse(server.URL + "/dongdominator/rss/")
+			scraper := &Scraper{feedURL: feedURL, client: server.Client()}
+			if _, err := scraper.FetchLatestEntries(context.Background()); err == nil {
+				t.Fatal("expected an error")
+			}
+		})
+	}
+}
 
-func (roundTripper roundTripperFunc) RoundTrip(request *http.Request) (*http.Response, error) {
-	return roundTripper(request)
+func TestParseDescriptionRejectsForeignPosters(t *testing.T) {
+	poster, review := parseDescription(`<p><img src="http://evil.example/x.jpg"/></p><p>Fine.</p>`)
+	if poster != "" || review != "Fine." {
+		t.Fatalf("poster=%q review=%q", poster, review)
+	}
+	if strings.Contains(review, "Watched on") {
+		t.Fatal("kept the watched line")
+	}
 }
 
 func TestDoRequestUsesProxyOnlyAfterForbiddenResponse(t *testing.T) {
@@ -126,82 +196,8 @@ func TestDoRequestDoesNotUseProxyForSuccessfulDirectResponse(t *testing.T) {
 	}
 }
 
-func TestFetchLatestEntriesDoesNotFetchOlderPages(t *testing.T) {
-	requests := make(map[string]int)
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		requests[request.URL.Path]++
-		switch request.URL.Path {
-		case "/dongdominator/diary/":
-			_, _ = io.WriteString(response, `<table><tr class="diary-entry-row" data-viewing-id="1"><td><a class="daydate" href="/dongdominator/diary/films/for/2026/10/07/">7</a></td><td><h2 class="primaryname">Recent Film</h2><span class="releasedate">2026</span></td><td class="col-rating"><input class="rateit-field" value="7" /></td></tr></table><a class="next" href="/dongdominator/diary/films/page/2/">Next</a>`)
-		case "/dongdominator/reviews/":
-			_, _ = io.WriteString(response, `<a class="next" href="/dongdominator/reviews/films/page/2/">Next</a>`)
-		default:
-			http.NotFound(response, request)
-		}
-	}))
-	defer server.Close()
-	diaryURL, _ := url.Parse(server.URL + "/dongdominator/diary/")
-	reviewsURL, _ := url.Parse(server.URL + "/dongdominator/reviews/")
-	scraper := &Scraper{diaryURL: diaryURL, reviewsURL: reviewsURL, client: server.Client()}
+type roundTripperFunc func(*http.Request) (*http.Response, error)
 
-	entries, err := scraper.FetchLatestEntries(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entries) != 1 || entries[0].Name != "Recent Film" || entries[0].Rating != 3.5 {
-		t.Fatalf("unexpected latest entries: %+v", entries)
-	}
-	if requests["/dongdominator/diary/films/page/2/"] != 0 || requests["/dongdominator/reviews/films/page/2/"] != 0 {
-		t.Fatalf("scraper followed historical pagination: %v", requests)
-	}
-}
-
-func TestParseDiaryPageIncludesReviewlessLogsAndMergesReviews(t *testing.T) {
-	markup := `<html><body>
-		<table><tbody>
-			<tr class="diary-entry-row viewing-poster-container" data-viewing-id="101" data-object-id="viewing:101">
-				<td><div class="react-component figure" data-component-class="LazyPoster" data-resolvable-poster-path='{&#034;posteredBaseLink&#034;:&#034;/film/click/&#034;,&#034;cacheBustingKey&#034;:&#034;abc123&#034;}'></div></td>
-				<td class="col-daydate"><a class="daydate" href="/dongdominator/diary/films/for/2026/06/20/">20</a></td>
-				<td><h2 class="primaryname prettify"><a href="/dongdominator/film/click/">Click</a></h2><span class="releasedate"><a href="/films/year/2006/">2006</a></span></td>
-				<td class="col-rating"><input class="rateit-field" type="range" value="7" /></td>
-				<td class="col-rewatch js-td-rewatch icon-status-on"><span class="has-icon icon-rewatch icon-16"></span></td>
-			</tr>
-			<tr class="diary-entry-row viewing-poster-container" data-viewing-id="102">
-				<td class="col-daydate"><a class="daydate" href="/dongdominator/diary/films/for/2026/06/19/">19</a></td>
-				<td><h2 class="primaryname prettify"><a href="/dongdominator/film/second-film/">Second Film</a></h2><span class="releasedate">2024</span></td>
-				<td class="col-rewatch js-td-rewatch icon-status-off"><span class="has-icon icon-rewatch icon-16"></span></td>
-			</tr>
-		</tbody></table>
-		<a class="next" href="/dongdominator/diary/films/page/2/">Older</a>
-	</body></html>`
-	document, err := html.Parse(strings.NewReader(markup))
-	if err != nil {
-		t.Fatal(err)
-	}
-	pageURL, _ := url.Parse("https://letterboxd.com/dongdominator/diary/")
-
-	entries, nextURL := parseDiaryPage(document, pageURL)
-	if len(entries) != 2 {
-		t.Fatalf("got %d diary entries, want 2", len(entries))
-	}
-	if entries[0].movie.Name != "Click" || entries[0].movie.Rating != 3.5 || !entries[0].movie.Rewatch {
-		t.Errorf("unexpected first diary entry: %+v", entries[0].movie)
-	}
-	if entries[0].movie.WatchedDate.Format("2006-01-02") != "2026-06-20" {
-		t.Errorf("unexpected watched date: %s", entries[0].movie.WatchedDate)
-	}
-	if entries[1].movie.Name != "Second Film" || entries[1].movie.Rating != 0 || entries[1].movie.Review != "" {
-		t.Errorf("unexpected reviewless log: %+v", entries[1].movie)
-	}
-	if nextURL == nil || nextURL.Path != "/dongdominator/diary/films/page/2/" {
-		t.Errorf("unexpected diary next page: %v", nextURL)
-	}
-
-	mergeReviewTexts(entries, []reviewListing{{viewingID: "101", movie: reader.Movie{Review: "A written review."}}})
-	if entries[0].movie.Review != "A written review." {
-		t.Errorf("review was not merged: %q", entries[0].movie.Review)
-	}
-	if entries[1].movie.Review != "" {
-		t.Errorf("reviewless diary entry received review text: %q", entries[1].movie.Review)
-	}
+func (roundTripper roundTripperFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return roundTripper(request)
 }
