@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boxy</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #2a2a2a;
+            color: #e0e0e0;
+        }
+        .main-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #1e1e1e;
+            padding: 0 20px 20px 20px;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.3);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        .content {
+            margin-left: 270px;
+            padding: 20px 20px 20px 40px;
+            flex: 1;
+        }
+        .search-container {
+            position: sticky;
+            top: 0;
+            background-color: #1e1e1e;
+            z-index: 10;
+            padding: 20px 0 20px 0;
+            margin: 0 0 10px 0;
+            border-bottom: 1px solid #333;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #444;
+            background-color: #2a2a2a;
+            color: #ffffff;
+            font-size: 14px;
+            box-sizing: border-box;
+            margin: 4px 0;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #4ade80;
+        }
+        .sidebar-movie-list {
+            margin-top: 20px;
+        }
+        .sidebar-movie-list h3 {
+            color: #ffffff;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .sidebar-movie-item {
+            padding: 10px 12px;
+            margin: 4px 0;
+            border: 1px solid #444;
+            cursor: pointer;
+            transition: all 0.2s;
+            background-color: #2a2a2a;
+        }
+        .sidebar-movie-item:hover {
+            background-color: #3a3a3a;
+            border-color: #4ade80;
+            transform: translateY(-1px);
+        }
+        .sidebar-movie-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #e0e0e0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sidebar-movie-year {
+            font-size: 10px;
+            color: #888;
+            margin-top: 2px;
+        }
+        .year-group {
+            position: relative;
+            margin-left: 25px;
+        }
+        .year-label {
+            position: absolute;
+            left: -25px;
+            top: 0;
+            bottom: 0;
+            width: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #333;
+            border-right: 2px solid #555;
+        }
+        .year-label-text {
+            color: #ccc;
+            font-size: 12px;
+            font-weight: bold;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            letter-spacing: 1px;
+        }
+        .year-separator {
+            height: 1px;
+            background-color: #555;
+            margin: 8px 0;
+            position: relative;
+        }
+        .movie-list {
+            margin-top: 20px;
+        }
+        .movie-list h3 {
+            color: #ffffff;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .movie-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .movie-item:hover {
+            color: #4ade80;
+        }
+        .movie-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #e0e0e0;
+        }
+        .movie-year {
+            font-size: 10px;
+            color: #888;
+        }
+        .movie-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .movie-card {
+            background: #333;
+            border-radius: 0px;
+            padding: 12px;
+            display: flex;
+            gap: 15px;
+            transition: all 0.2s;
+            border: 1px solid #444;
+            min-height: 140px;
+        }
+        .movie-card:hover {
+            background: #3a3a3a;
+            border-color: #555;
+        }
+        .movie-poster {
+            width: 100px;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 0px;
+            flex-shrink: 0;
+        }
+        .movie-poster-placeholder {
+            width: 100px;
+            height: 150px;
+            background: #555;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 12px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .movie-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .movie-info-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 4px;
+        }
+        .movie-info-left {
+            flex: 0 0 200px;
+        }
+        .movie-info-middle {
+            flex: 0 0 180px;
+        }
+        .movie-info-ratings {
+            flex: 0 0 120px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        .movie-info-right {
+            flex: 1;
+        }
+        .external-ratings-compact {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-items: flex-end;
+        }
+        .external-ratings-compact .external-rating {
+            font-size: 0.8em;
+            padding: 3px 6px;
+        }
+        .movie-header {
+            margin-bottom: 15px;
+        }
+        .movie-title-section {
+            flex: 1;
+        }
+        .movie-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffffff;
+            margin: 0 0 3px 0;
+            line-height: 1.2;
+        }
+        .movie-year {
+            color: #aaa;
+            margin: 0 0 10px 0;
+            font-size: 1.1em;
+        }
+        .rating-section {
+            margin-top: 8px;
+        }
+        .my-rating {
+            padding: 4px 0px;
+            border-radius: 0px;
+            font-weight: bold;
+            font-size: 16px;
+            white-space: nowrap;
+        }
+        .rating-0-0 { color: #7f1d1d; }    /* 0.0 - Dark red */
+        .rating-0-5 { color: #991b1b; }    /* 0.5 - Red */
+        .rating-1-0 { color: #dc2626; }    /* 1.0 - Bright red */
+        .rating-1-5 { color: #ea580c; }    /* 1.5 - Red-orange */
+        .rating-2-0 { color: #f97316; }    /* 2.0 - Orange */
+        .rating-2-5 { color: #fb923c; }    /* 2.5 - Light orange */
+        .rating-3-0 { color: #fbbf24; }    /* 3.0 - Yellow-orange */
+        .rating-3-5 { color: #facc15; }    /* 3.5 - Yellow */
+        .rating-4-0 { color: #84cc16; }    /* 4.0 - Yellow-green */
+        .rating-4-5 { color: #22c55e; }    /* 4.5 - Light green */
+        .rating-5-0 { color: #16a34a; }    /* 5.0 - Green */
+        .rewatch-badge {
+            color: #888;
+            font-size: 0.8em;
+            font-style: italic;
+        }
+        .movie-details {
+            margin-bottom: 15px;
+        }
+        .detail-item {
+            margin-bottom: 8px;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #ffffff;
+            font-size: 13px;
+            margin-bottom: 2px;
+            display: block;
+        }
+        .detail-value {
+            color: #d0d0d0;
+            font-size: 13px;
+            line-height: 1.3;
+        }
+        .review {
+            padding: 12px;
+            color: #e0e0e0;
+            line-height: 1.4;
+            font-size: 14px;
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+            background-color: #1a1a1a;
+            border: 1px solid #444;
+        }
+        .plot {
+            padding: 0;
+            font-style: italic;
+            color: #bbb;
+            line-height: 1.3;
+            font-size: 13px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+        }
+        .plot-with-review {
+            padding: 0;
+            font-style: italic;
+            color: #999;
+            line-height: 1.2;
+            font-size: 12px;
+            margin-top: 12px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        .external-ratings {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 1px solid #444;
+        }
+        .ratings-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .ratings-right {
+            display: flex;
+            gap: 15px;
+        }
+        .external-rating {
+            background: #444;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #bbb;
+        }
+        .letterboxd-icon {
+            display: inline-block;
+            background: #00d400;
+            color: white;
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            text-align: center;
+            line-height: 18px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 8px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .letterboxd-icon:hover {
+            background: #00b300;
+        }
+        .watched-date {
+            color: #888;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="search-container">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search movies..." onkeyup="filterMovies()">
+            </div>
+            
+            <div class="sidebar-movie-list">
+                <div id="sidebarMovieListContainer">
+                    {{$currentYear := 0}}
+                    {{$groupStarted := false}}
+                    {{range $index, $movie := .Movies}}
+                        {{$watchedYear := $movie.WatchedDate.Year}}
+                        {{if ne $watchedYear $currentYear}}
+                            {{if $groupStarted}}
+                                </div>
+                                <div class="year-separator"></div>
+                            {{end}}
+                            <div class="year-group">
+                                <div class="year-label">
+                                    <div class="year-label-text">{{$watchedYear}}</div>
+                                </div>
+                            {{$currentYear = $watchedYear}}
+                            {{$groupStarted = true}}
+                        {{end}}
+                        <div class="sidebar-movie-item" onclick="scrollToMovie('movie-{{$index}}')">
+                            <div class="sidebar-movie-title">{{$movie.Name}}</div>
+                            <div class="sidebar-movie-year">({{$movie.Year}})</div>
+                        </div>
+                    {{end}}
+                    {{if $groupStarted}}
+                        </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="movie-list" id="movieList">
+                {{range $index, $movie := .Movies}}
+                <div class="movie-card" id="movie-{{$index}}" data-search="{{$movie.SearchableText}}">
+                    {{if and $movie.Poster (ne $movie.Poster "N/A")}}
+                    <img src="{{$movie.Poster}}" alt="{{$movie.Name}} poster" class="movie-poster" {{if $movie.FallbackPoster}}data-fallback="{{$movie.FallbackPoster}}"{{end}} onerror="if (this.dataset.fallback && this.src !== this.dataset.fallback) { this.src = this.dataset.fallback; } else { this.style.display = 'none'; this.nextElementSibling.style.display = 'flex'; }">
+                    <div class="movie-poster-placeholder" style="display:none;">No Image</div>
+                    {{else}}
+                    <div class="movie-poster-placeholder">No Image</div>
+                    {{end}}
+                    
+                    <div class="movie-content">
+                        <div class="movie-info-container">
+                            <div class="movie-info-left">
+                                <div class="movie-header">
+                                    <div class="movie-title-section">
+                                        <h3 class="movie-title">{{$movie.Name}}</h3>
+                                        <p class="movie-year">{{$movie.Year}} • <span class="watched-date">{{$movie.WatchedDate.Format "Jan 2, 2006"}}</span></p>
+                                    </div>
+                                    
+                                    {{if $movie.Rewatch}}<div class="rewatch-badge">REWATCH</div>{{end}}
+                                </div>
+                            </div>
+                            
+                            <div class="movie-info-ratings">
+                                {{if $movie.Rating}}
+                                <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
+                                    <div class="my-rating {{if eq $movie.Rating 0.0}}rating-0-0{{else if eq $movie.Rating 0.5}}rating-0-5{{else if eq $movie.Rating 1.0}}rating-1-0{{else if eq $movie.Rating 1.5}}rating-1-5{{else if eq $movie.Rating 2.0}}rating-2-0{{else if eq $movie.Rating 2.5}}rating-2-5{{else if eq $movie.Rating 3.0}}rating-3-0{{else if eq $movie.Rating 3.5}}rating-3-5{{else if eq $movie.Rating 4.0}}rating-4-0{{else if eq $movie.Rating 4.5}}rating-4-5{{else if eq $movie.Rating 5.0}}rating-5-0{{else}}rating-2-5{{end}}">
+                                        {{formatRating $movie.Rating}}/5 ★
+                                    </div>
+                                    <a href="{{$movie.LetterboxdURI}}" target="_blank" class="letterboxd-icon" title="View on Letterboxd">L</a>
+                                </div>
+                                {{else}}
+                                <div style="display: flex; justify-content: flex-end;">
+                                    <a href="{{$movie.LetterboxdURI}}" target="_blank" class="letterboxd-icon" title="View on Letterboxd">L</a>
+                                </div>
+                                {{end}}
+                                <div class="external-ratings-compact">
+                                    {{if $movie.ImdbRating}}<div class="external-rating">IMDB: {{$movie.ImdbRating}}</div>{{end}}
+                                    {{if and $movie.Metascore (ne $movie.Metascore "N/A") (ne $movie.Metascore "")}}<div class="external-rating">Metacritic: {{$movie.Metascore}}</div>{{end}}
+                                    {{if $movie.RottenTomatoes}}<div class="external-rating">RT: {{$movie.RottenTomatoes}}</div>{{end}}
+                                </div>
+                            </div>
+                            
+                            <div class="movie-info-middle">
+                                <div class="movie-details">
+                                    {{if $movie.Director}}
+                                    <div class="detail-item">
+                                        <span class="detail-label">Director</span>
+                                        <span class="detail-value">{{$movie.Director}}</span>
+                                    </div>
+                                    {{end}}
+                                    
+                                    {{if $movie.Actors}}
+                                    <div class="detail-item">
+                                        <span class="detail-label">Cast</span>
+                                        <span class="detail-value">{{$movie.Actors}}</span>
+                                    </div>
+                                    {{end}}
+                                    
+                                    {{if $movie.Genre}}
+                                    <div class="detail-item">
+                                        <span class="detail-label">Genre</span>
+                                        <span class="detail-value">{{$movie.Genre}}</span>
+                                    </div>
+                                    {{end}}
+                                    
+                                    {{if $movie.Tags}}
+                                    <div class="detail-item">
+                                        <span class="detail-label">Tags</span>
+                                        <span class="detail-value">{{$movie.Tags}}</span>
+                                    </div>
+                                    {{end}}
+                                </div>
+                            </div>
+                            
+                            <div class="movie-info-right">
+                                {{if $movie.Review}}
+                                <div class="review">{{$movie.Review}}</div>
+                                {{if $movie.Plot}}
+                                <div class="plot-with-review">{{$movie.Plot}}</div>
+                                {{end}}
+                                {{else if $movie.Plot}}
+                                <div class="plot">{{$movie.Plot}}</div>
+                                {{end}}
+                            </div>
+                        </div>
+                        
+
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function filterMovies() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const movieCards = document.querySelectorAll('.movie-card');
+            
+            movieCards.forEach(card => {
+                const searchableText = card.getAttribute('data-search').toLowerCase();
+                if (searchableText.includes(searchTerm)) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+        
+        function scrollToMovie(movieId) {
+            const movieElement = document.getElementById(movieId);
+            if (movieElement) {
+                movieElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+        
+        // Scroll synchronization
+        let isScrolling = false;
+        
+        function syncSidebarScroll() {
+            if (isScrolling) return;
+            
+            const movieCards = document.querySelectorAll('.movie-card');
+            const sidebarItems = document.querySelectorAll('.sidebar-movie-item');
+            const sidebarContainer = document.querySelector('.sidebar');
+            
+            let currentMovie = null;
+            const scrollY = window.scrollY;
+            const viewportCenter = scrollY + window.innerHeight / 2;
+            
+            // Find the movie closest to the center of the viewport
+            for (let i = 0; i < movieCards.length; i++) {
+                const card = movieCards[i];
+                const rect = card.getBoundingClientRect();
+                const cardTop = rect.top + scrollY;
+                const cardBottom = cardTop + rect.height;
+                
+                if (cardTop <= viewportCenter && cardBottom >= scrollY) {
+                    currentMovie = i;
+                    break;
+                }
+            }
+            
+            if (currentMovie !== null && sidebarItems[currentMovie]) {
+                // Highlight current movie in sidebar
+                sidebarItems.forEach(item => item.style.backgroundColor = '#2a2a2a');
+                sidebarItems[currentMovie].style.backgroundColor = '#3a3a3a';
+                
+                // Scroll sidebar to keep current movie visible
+                const sidebarItem = sidebarItems[currentMovie];
+                const sidebarRect = sidebarContainer.getBoundingClientRect();
+                const itemRect = sidebarItem.getBoundingClientRect();
+                
+                if (itemRect.top < sidebarRect.top + 100 || itemRect.bottom > sidebarRect.bottom - 100) {
+                    isScrolling = true;
+                    sidebarItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => { isScrolling = false; }, 500);
+                }
+            }
+        }
+        
+        // Add scroll listener to content area
+        window.addEventListener('scroll', syncSidebarScroll);
+        
+        // Sync sidebar to top when main page is at top
+        function syncSidebarToTop() {
+            const sidebar = document.querySelector('.sidebar');
+            if (window.scrollY === 0) {
+                sidebar.scrollTop = 0;
+            }
+        }
+        
+        // Sync sidebar to bottom when main page is at bottom
+        function syncSidebarToBottom() {
+            const sidebar = document.querySelector('.sidebar');
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (window.scrollY >= maxScroll - 5) { // Small threshold for bottom detection
+                sidebar.scrollTop = sidebar.scrollHeight - sidebar.clientHeight;
+            }
+        }
+        
+        // Enhanced scroll listener that also checks for top and bottom positions
+        window.addEventListener('scroll', function() {
+            syncSidebarScroll();
+            syncSidebarToTop();
+            syncSidebarToBottom();
+        });
+        
+        // Listen for Home and End key presses to sync sidebar
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Home') {
+                setTimeout(() => {
+                    if (window.scrollY === 0) {
+                        const sidebar = document.querySelector('.sidebar');
+                        sidebar.scrollTop = 0;
+                    }
+                }, 100); // Small delay to ensure page scroll completes first
+            } else if (event.key === 'End') {
+                // Multiple attempts to ensure we catch when page reaches bottom
+                const attemptBottomSync = () => {
+                    const sidebar = document.querySelector('.sidebar');
+                    sidebar.scrollTop = sidebar.scrollHeight - sidebar.clientHeight;
+                };
+                
+                setTimeout(attemptBottomSync, 150);
+                setTimeout(attemptBottomSync, 300);
+                setTimeout(attemptBottomSync, 500);
+            }
+        });
+        
+        // Initial sync on page load
+        document.addEventListener('DOMContentLoaded', syncSidebarScroll);
+    </script>
+</body>
+</html>

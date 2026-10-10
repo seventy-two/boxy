@@ -1,0 +1,10 @@
+# Built binary
+/boxy
+
+# Movie data: Letterboxd exports and OMDB cache
+*.csv
+*.csv.backup-*
+*.csv_bak
+
+# Logs
+*.log

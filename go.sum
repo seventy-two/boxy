@@ -1,0 +1,4 @@
+github.com/seventy-two/Cara v0.0.0-20160914220715-4d6a1d2c169e h1:/VNOBIgAiJ9ZBIqUbvx/YQdqvBXiw40t3MLIXZMAhj8=
+github.com/seventy-two/Cara v0.0.0-20160914220715-4d6a1d2c169e/go.mod h1:sjH4YjDxSnNTEEd8XteIyxV4CjFm6Oqo+JqmjRjx6GM=
+golang.org/x/net v0.33.0 h1:74SYHlV8BIgHIFC/LrYkOGIwL19eTYXQ5wc6TBuO36I=
+golang.org/x/net v0.33.0/go.mod h1:HXLR5J+9DxmrqMwG9qjGCxZ+zKXxBru04zlTvWlWuN4=
